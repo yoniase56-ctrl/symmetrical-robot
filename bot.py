@@ -10,10 +10,8 @@ FOOTBALL_API_KEY = os.getenv("FOOTBALL_API_KEY")
 
 HEADERS = {"X-Auth-Token": FOOTBALL_API_KEY}
 
-# Top 6 European Competitions
 COMPETITIONS = ["CL", "PL", "PD", "SA", "BL1", "FL1"]
 
-# Top European Clubs List
 FAMOUS_TEAMS = [
     "Manchester City",
     "Arsenal",
@@ -49,7 +47,6 @@ FAMOUS_TEAMS = [
 ]
 
 
-# 2. Poisson Distribution Model
 def poisson_pmf(lam, k):
     return (math.exp(-lam) * (lam**k)) / math.factorial(k)
 
@@ -84,7 +81,6 @@ def calculate_prediction(home_xg=1.70, away_xg=1.20):
     )
 
 
-# 3. Send Message to Telegram
 def send_telegram_message(text):
     tg_url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
     max_len = 4000
@@ -95,14 +91,9 @@ def send_telegram_message(text):
             "text": chunk,
             "parse_mode": "HTML",
         }
-        res = requests.post(tg_url, json=payload, timeout=10)
-        if res.status_code != 200:
-            print(f"Telegram Error: {res.text}")
-        else:
-            print("Telegram Message Sent Successfully!")
+        requests.post(tg_url, json=payload, timeout=10)
 
 
-# 4. Fetch Matches
 def fetch_matches(date_from, date_to):
     matches = []
     for comp in COMPETITIONS:
@@ -135,28 +126,23 @@ def fetch_matches(date_from, date_to):
                                 "time": match["utcDate"][11:16] + " UTC",
                             }
                         )
-            else:
-                print(f"API Error {comp}: {res.status_code} - {res.text}")
         except Exception as e:
-            print(f"Fetch Error: {e}")
+            print(f"Error fetching {comp}: {e}")
 
     matches.sort(key=lambda x: (x["date"], x["time"]))
     return matches
 
 
-# 5. Main Execution
 def main():
     now = datetime.now(timezone.utc)
     is_monday = now.weekday() == 0
 
     if is_monday:
-        # On Mondays: Look ahead 7 days
         date_from = now.strftime("%Y-%m-%d")
         date_to = (now + timedelta(days=6)).strftime("%Y-%m-%d")
         header = f"🗓️ <b>WEEKLY EUROPEAN FOOTBALL PREVIEW</b> 🇪🇺\n📅 <i>Week of {date_from} to {date_to}</i>\n\n"
         matches = fetch_matches(date_from, date_to)
     else:
-        # First check today
         date_from = now.strftime("%Y-%m-%d")
         date_to = date_from
         matches = fetch_matches(date_from, date_to)
@@ -164,21 +150,20 @@ def main():
         if matches:
             header = f"⚡ <b>TODAY'S TOP EUROPEAN MATCHES</b> ⚽\n📅 <i>{now.strftime('%d %B %Y')}</i>\n\n"
         else:
-            # If no games today, fetch upcoming games for next 4 days!
+            # Look ahead for upcoming games in the next 4 days!
             date_to = (now + timedelta(days=4)).strftime("%Y-%m-%d")
             matches = fetch_matches(date_from, date_to)
-            header = f"🔥 <b>UPCOMING TOP EUROPEAN MATCHES</b> ⚽\n📅 <i>Next 4 Days ({date_from} - {date_to})</i>\n\n"
+            header = f"🔥 <b>UPCOMING TOP EUROPEAN MATCHES</b> ⚽\n📅 <i>Next 4 Days ({date_from} to {date_to})</i>\n\n"
 
     if not matches:
-        # Fallback test message so your channel always verifies connection
-        test_msg = "🤖 <b>Sheger Football AI Bot is Online! 🇪🇹⚽</b>\n\nNo European matches scheduled for today. Regular predictions will post before upcoming matchdays!"
+        test_msg = "🤖 <b>Sheger Football AI is Online! 🇪🇹⚽</b>\n\nNo matches scheduled for today. Predictions will post automatically before upcoming matchdays!"
         send_telegram_message(test_msg)
         return
 
     message = header
     current_date = ""
 
-    for m in matches[:8]:  # Limit to top 8 matches to keep it clean
+    for m in matches[:8]:
         if m["date"] != current_date:
             current_date = m["date"]
             message += f"\n📆 <b>--- {current_date} ---</b>\n"
@@ -196,6 +181,7 @@ def main():
     message += "\n<i>⚠️ Statistical model probabilities. Gamble responsibly.</i>"
 
     send_telegram_message(message)
+    print("Post successfully sent to Telegram!")
 
 
 if __name__ == "__main__":
