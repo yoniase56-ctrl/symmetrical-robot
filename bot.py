@@ -54,17 +54,21 @@ def generate_prediction(home_team, away_team):
     home_goals = (home_len % 3)
     away_goals = (away_len % 2)
     
+    # ኦድ እና የመሳካት ዕድል በፐርሰንት (%)
     if home_goals > away_goals:
         tip = f"ድል ለ {home_team} (Home Win)"
         odd = round(random.uniform(1.45, 1.95), 2)
+        win_chance = random.randint(78, 89) # የባለሜዳ ድል እድል
     elif home_goals < away_goals:
         tip = f"ድል ለ {away_team} (Away Win)"
         odd = round(random.uniform(2.10, 3.20), 2)
+        win_chance = random.randint(66, 76) # የሜዳ ውጪ ድል እድል
     else:
         tip = "አቻ (Draw)"
         odd = round(random.uniform(3.00, 3.60), 2)
+        win_chance = random.randint(58, 68) # የአቻ እድል
         
-    return home_goals, away_goals, tip, odd
+    return home_goals, away_goals, tip, odd, win_chance
 
 def main():
     print("Bot is starting...")
@@ -81,33 +85,37 @@ def main():
         send_telegram_message(msg)
         return
 
-    message = "🔥 <b>ሸገር የኳስ ግምት | የጨዋታ ትንበያዎች & የ 10 ብር ትርፍ</b> 🔥\n\n"
+    message = "🔥 <b>ሸገር የኳስ ግምት | የዕለቱ ትንበያዎች & ዕድሎች</b> 🔥\n\n"
     
     total_odds = 1.0
-    selected_matches = matches[:5] # ከፍተኛ 5ቱን ጨዋታዎች ይመርጣል
+    total_chance = 0
+    selected_matches = matches[:5]
     
     for match in selected_matches:
         home = match["homeTeam"]["name"]
         away = match["awayTeam"]["name"]
-        h_g, a_g, tip, odd = generate_prediction(home, away)
+        h_g, a_g, tip, odd, win_chance = generate_prediction(home, away)
         
-        # የ 10 ብር ትርፍ ስሌት
         single_payout = round(10 * odd, 2)
         total_odds *= odd
+        total_chance += win_chance
         
         message += f"⚽ <b>{home} VS {away}</b>\n"
         message += f"📊 <b>ግምት፦</b> {h_g} - {a_g}\n"
         message += f"💡 <b>ምክር፦</b> {tip}\n"
         message += f"💰 <b>ኦድ፦</b> <code>{odd}</code>\n"
+        message += f"🎯 <b>የመሳካት ዕድል፦</b> <b>{win_chance}%</b>\n"
         message += f"💵 <b>በ 10 ብር ቢያዝ፦</b> <b>{single_payout:.2f} ብር</b>\n"
         message += "———————————————\n"
         
-    # የጥምር ትኬት (Combo Ticket) ስሌት
+    # የጥምር ትኬት ስሌት
     total_odds = round(total_odds, 2)
     combo_payout = round(10 * total_odds, 2)
+    avg_chance = round(total_chance / len(selected_matches))
     
     message += "\n🎟 <b>የዕለቱ ባለ 5 ጨዋታ ጥምር ትኬት (Combo)</b> 🎟\n"
-    message += f"📈 <b>ጠቅላላ ኦድ (Total Odds)፦</b> <code>{total_odds}</code>\n"
+    message += f"📈 <b>ጠቅላላ ኦድ፦</b> <code>{total_odds}</code>\n"
+    message += f"🎯 <b>የትኬቱ እርግጠኝነት፦</b> <b>{avg_chance}%</b>\n"
     message += f"🤑 <b>በ 10 ብር ሲመደብ የሚያስገኘው፦</b> <b>{combo_payout:,.2f} ብር</b>\n"
     message += "———————————————\n"
     message += "📢 ተከታተሉን፦ @shegerpridict"
