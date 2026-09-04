@@ -54,18 +54,14 @@ def generate_prediction(home_team, away_team):
     home_goals = (home_len % 3)
     away_goals = (away_len % 2)
     
-    # ተጨባጭ ኦድ (Odds) የማስላት ሂሳባዊ ቀመር
     if home_goals > away_goals:
         tip = f"ድል ለ {home_team} (Home Win)"
-        # የባለሜዳው የማሸነፍ እድል ከፍተኛ ከሆነ ኦዱ ከ 1.45 እስከ 1.95 ይሆናል
         odd = round(random.uniform(1.45, 1.95), 2)
     elif home_goals < away_goals:
         tip = f"ድል ለ {away_team} (Away Win)"
-        # የሜዳ ውጪ አሸናፊ ከሆነ ኦዱ ከ 2.10 እስከ 3.20 ይሆናል
         odd = round(random.uniform(2.10, 3.20), 2)
     else:
         tip = "አቻ (Draw)"
-        # አቻ ሲሆን ኦዱ ከ 3.00 እስከ 3.60 ይሆናል
         odd = round(random.uniform(3.00, 3.60), 2)
         
     return home_goals, away_goals, tip, odd
@@ -78,26 +74,44 @@ def main():
         msg = (
             "⚽ <b>ሸገር የኳስ ግምት | ዕለታዊ መረጃ</b> ⚽\n\n"
             "📅 <b>ቀን፦</b> " + datetime.utcnow().strftime("%Y-%m-%d") + "\n\n"
-            "ℹ️ <i>በተመረጡት ታላላቅ የአውሮፓ ሊጎች ዛሬ ምንም ጨዋታ የለም። የሚቀጥሉት የሊግ ጨዋታዎች እንደተቃረቡ ትንበያዎች ወዲያውኑ ይለቀቃሉ!</i>\n\n"
+            "ℹ️ <i>በተመረጡት ታላላቅ የአውሮፓ ሊጎች ዛሬ ምንም ጨዋታ የለም። የሚቀጥሉት ጨዋታዎች ሲቃረቡ ትንበያዎች ወዲያውኑ ይለቀቃሉ!</i>\n\n"
             "✅ <b>ሲስተም፦</b> ንቁ እና በተጠንቀቅ ላይ ነው!\n"
             "📢 <b>ቻናል፦</b> @shegerpridict"
         )
         send_telegram_message(msg)
         return
 
-    message = "🔥 <b>ሸገር የኳስ ግምት | የጨዋታ ትንበያዎች & ኦድ</b> 🔥\n\n"
-    for match in matches[:5]:
+    message = "🔥 <b>ሸገር የኳስ ግምት | የጨዋታ ትንበያዎች & የ 10 ብር ትርፍ</b> 🔥\n\n"
+    
+    total_odds = 1.0
+    selected_matches = matches[:5] # ከፍተኛ 5ቱን ጨዋታዎች ይመርጣል
+    
+    for match in selected_matches:
         home = match["homeTeam"]["name"]
         away = match["awayTeam"]["name"]
         h_g, a_g, tip, odd = generate_prediction(home, away)
         
+        # የ 10 ብር ትርፍ ስሌት
+        single_payout = round(10 * odd, 2)
+        total_odds *= odd
+        
         message += f"⚽ <b>{home} VS {away}</b>\n"
         message += f"📊 <b>ግምት፦</b> {h_g} - {a_g}\n"
         message += f"💡 <b>ምክር፦</b> {tip}\n"
-        message += f"💰 <b>ኦድ (Odds)፦</b> <code>{odd}</code>\n"
+        message += f"💰 <b>ኦድ፦</b> <code>{odd}</code>\n"
+        message += f"💵 <b>በ 10 ብር ቢያዝ፦</b> <b>{single_payout:.2f} ብር</b>\n"
         message += "———————————————\n"
         
-    message += "\n📢 ተከታተሉን፦ @shegerpridict"
+    # የጥምር ትኬት (Combo Ticket) ስሌት
+    total_odds = round(total_odds, 2)
+    combo_payout = round(10 * total_odds, 2)
+    
+    message += "\n🎟 <b>የዕለቱ ባለ 5 ጨዋታ ጥምር ትኬት (Combo)</b> 🎟\n"
+    message += f"📈 <b>ጠቅላላ ኦድ (Total Odds)፦</b> <code>{total_odds}</code>\n"
+    message += f"🤑 <b>በ 10 ብር ሲመደብ የሚያስገኘው፦</b> <b>{combo_payout:,.2f} ብር</b>\n"
+    message += "———————————————\n"
+    message += "📢 ተከታተሉን፦ @shegerpridict"
+    
     send_telegram_message(message)
 
 if __name__ == "__main__":
