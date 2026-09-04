@@ -54,19 +54,18 @@ def generate_prediction(home_team, away_team):
     home_goals = (home_len % 3)
     away_goals = (away_len % 2)
     
-    # ኦድ እና የመሳካት ዕድል በፐርሰንት (%)
     if home_goals > away_goals:
         tip = f"ድል ለ {home_team} (Home Win)"
         odd = round(random.uniform(1.45, 1.95), 2)
-        win_chance = random.randint(78, 89) # የባለሜዳ ድል እድል
+        win_chance = random.randint(78, 89)
     elif home_goals < away_goals:
         tip = f"ድል ለ {away_team} (Away Win)"
         odd = round(random.uniform(2.10, 3.20), 2)
-        win_chance = random.randint(66, 76) # የሜዳ ውጪ ድል እድል
+        win_chance = random.randint(66, 76)
     else:
         tip = "አቻ (Draw)"
         odd = round(random.uniform(3.00, 3.60), 2)
-        win_chance = random.randint(58, 68) # የአቻ እድል
+        win_chance = random.randint(58, 68)
         
     return home_goals, away_goals, tip, odd, win_chance
 
@@ -108,7 +107,7 @@ def main():
         message += f"💵 <b>በ 10 ብር ቢያዝ፦</b> <b>{single_payout:.2f} ብር</b>\n"
         message += "———————————————\n"
         
-    # የጥምር ትኬት ስሌት
+    # ጥምር ትኬት
     total_odds = round(total_odds, 2)
     combo_payout = round(10 * total_odds, 2)
     avg_chance = round(total_chance / len(selected_matches))
