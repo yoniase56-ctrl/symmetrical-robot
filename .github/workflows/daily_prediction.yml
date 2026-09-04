@@ -2,8 +2,21 @@ name: Daily European Football Predictor
 
 on:
   schedule:
-    - cron: '30 8 * * *'  # በየቀኑ በኢትዮጵያ አቆጣጠር 11:30 AM
-  workflow_dispatch:       # በእጅ በቀላሉ "Run workflow" ብለው ለመሞከር የሚፈቅድ
+    - cron: '30 8 * * *'   # በየቀኑ ረፋድ 11:30 AM (ትንበያ ይለጥፋል)
+    - cron: '30 20 * * *'  # በየቀኑ ማታ 11:30 PM (ውጤት አረጋግጦ ✅ እና ❌ ያደርጋል)
+  workflow_dispatch:
+    inputs:
+      action:
+        description: 'ምን እንዲሰራ ይፈልጋሉ?'
+        required: true
+        default: 'predict'
+        type: choice
+        options:
+          - predict
+          - verify
+
+permissions:
+  contents: write
 
 jobs:
   run-bot:
@@ -23,10 +36,27 @@ jobs:
           python -m pip install --upgrade pip
           pip install requests
 
-      - name: Run Prediction Script
+      - name: Run Prediction or Verification
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHANNEL_ID: ${{ secrets.TELEGRAM_CHANNEL_ID }}
           FOOTBALL_API_KEY: ${{ secrets.FOOTBALL_API_KEY }}
         run: |
-          python bot.py
+          ACTION="${{ github.event.inputs.action }}"
+          if [ -z "$ACTION" ]; then
+            HOUR=$(date -u +%H)
+            if [ "$HOUR" -ge 18 ]; then
+              ACTION="verify"
+            else
+              ACTION="predict"
+            fi
+          fi
+          python bot.py $ACTION
+
+      - name: Save Results Data
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add predictions_data.json || true
+          git commit -m "Update predictions data" || true
+          git push || true
