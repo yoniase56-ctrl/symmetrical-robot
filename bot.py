@@ -107,7 +107,6 @@ def main():
         message += f"💵 <b>በ 10 ብር ቢያዝ፦</b> <b>{single_payout:.2f} ብር</b>\n"
         message += "———————————————\n"
         
-    # ጥምር ትኬት
     total_odds = round(total_odds, 2)
     combo_payout = round(10 * total_odds, 2)
     avg_chance = round(total_chance / len(selected_matches))
