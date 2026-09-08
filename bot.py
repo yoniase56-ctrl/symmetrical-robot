@@ -66,25 +66,24 @@ def generate_smart_prediction(home, away):
     h_rank = get_team_rank(home)
     a_rank = get_team_rank(away)
     
-    # 90%+ የመሳካት ዕድል ያላቸው አስተማማኝ ምርጫዎች (Safe Betting)
-    if h_rank < a_rank: # ባለሜዳው እጅግ ጠንካራ ሲሆን (ለምሳሌ Real Madrid vs Osasuna)
+    if h_rank < a_rank:
         h_g = random.choice([2, 3])
         a_g = random.choice([0, 1])
-        tip = f"{home} ያሸንፋል ወይም አቻ (1X Double Chance)"
+        tip = f"{home} ያሸንፋል ወይም አቻ (1X)"
         tip_code = "HOME_OR_DRAW"
         odd = round(random.uniform(1.30, 1.55), 2)
         chance = random.randint(88, 95)
-    elif a_rank < h_rank: # የሜዳ ውጪው ጠንካራ ሲሆን (ለምሳሌ Valencia vs Barcelona)
+    elif a_rank < h_rank:
         h_g = random.choice([0, 1])
         a_g = random.choice([2, 3])
-        tip = f"{away} ያሸንፋል ወይም አቻ (X2 Double Chance)"
+        tip = f"{away} ያሸንፋል ወይም አቻ (X2)"
         tip_code = "AWAY_OR_DRAW"
         odd = round(random.uniform(1.32, 1.58), 2)
         chance = random.randint(87, 94)
-    else: # ተቀራራቢ ቡድኖች ሲሆኑ (Safe Over Goals)
+    else:
         h_g = 1
         a_g = 1
-        tip = "ከ 1.5 በላይ ጎል (Over 1.5 Goals)"
+        tip = "ከ 1.5 በላይ ጎል (Over 1.5)"
         tip_code = "OVER_1_5"
         odd = round(random.uniform(1.35, 1.60), 2)
         chance = random.randint(85, 91)
@@ -92,7 +91,7 @@ def generate_smart_prediction(home, away):
     return h_g, a_g, tip, tip_code, odd, chance
 
 def run_predictions():
-    print("Posting 90%+ smart predictions...")
+    print("Posting predictions...")
     matches = get_today_matches()
     
     if not matches:
@@ -106,7 +105,7 @@ def run_predictions():
         return
 
     saved_data = {"date": datetime.utcnow().strftime("%Y-%m-%d"), "matches": []}
-    message = "🔥 <b>ሸገር የኳስ ግምት | የዕለቱ አስተማማኝ (VIP) ትንበያዎች</b> 🔥\n\n"
+    message = "🔥 <b>ሸገር የኳስ ግምት | የዕለቱ አስተማማኝ ትንበያዎች</b> 🔥\n\n"
     
     total_odds = 1.0
     total_chance = 0
@@ -130,7 +129,7 @@ def run_predictions():
         
         message += f"⚽ <b>{h_name} VS {a_name}</b>\n"
         message += f"📊 <b>የግብ ግምት፦</b> {h_g} - {a_g}\n"
-        message += f"🛡 <b>አስተማማኝ ምክር፦</b> {tip}\n"
+        message += f"🛡 <b>ምክር፦</b> {tip}\n"
         message += f"💰 <b>ኦድ፦</b> <code>{odd}</code>\n"
         message += f"🎯 <b>የመሳካት ዕድል፦</b> <b>{chance}%</b> 🔥\n"
         message += f"💵 <b>በ 10 ብር ቢያዝ፦</b> <b>{single_payout:.2f} ብር</b>\n"
@@ -140,7 +139,7 @@ def run_predictions():
     combo_payout = round(10 * total_odds, 2)
     avg_chance = round(total_chance / len(selected))
     
-    message += "\n🎟 <b>የዕለቱ አስተማማኝ ባለ 5 ጥምር ትኬት (Safe Combo)</b> 🎟\n"
+    message += "\n🎟 <b>የዕለቱ አስተማማኝ ባለ 5 ጥምር ትኬት (Combo)</b> 🎟\n"
     message += f"📈 <b>ጠቅላላ ኦድ፦</b> <code>{total_odds}</code>\n"
     message += f"🎯 <b>አጠቃላይ እርግጠኝነት፦</b> <b>{avg_chance}%</b>\n"
     message += f"🤑 <b>በ 10 ብር ሲመደብ የሚያስገኘው፦</b> <b>{combo_payout:,.2f} ብር</b>\n"
@@ -157,7 +156,7 @@ def run_predictions():
             json.dump(saved_data, f)
 
 def check_results():
-    print("Checking match results with 90% accuracy logic...")
+    print("Checking match results without erasing original prediction...")
     if not os.path.exists(DATA_FILE):
         print("No predictions data found.")
         return
@@ -177,12 +176,12 @@ def check_results():
     won_count = 0
     total_count = len(data["matches"])
     
-    edited_msg = "🔥 <b>ሸገር የኳስ ግምት | የተረጋገጠ ውጤት</b> 🔥\n\n"
+    # የጠዋቱን ፖስት ሙሉ መረጃ ሳያጠፋ የሚያስተካክልበት
+    edited_msg = "🔥 <b>ሸገር የኳስ ግምት | የዕለቱ ትንበያዎች & ውጤቶች</b> 🔥\n\n"
     recap_msg = "🏁 <b>ሸገር የኳስ ግምት | የዕለቱ ውጤት ማጠቃለያ</b> 🏁\n\n"
     
     for m in data["matches"]:
         match_info = api_matches.get(m["id"], {})
-        status = match_info.get("status", "FINISHED")
         winner = match_info.get("score", {}).get("winner", None)
         score_home = match_info.get("score", {}).get("fullTime", {}).get("home", m["h_g"])
         score_away = match_info.get("score", {}).get("fullTime", {}).get("away", m["a_g"])
@@ -190,7 +189,6 @@ def check_results():
         is_success = False
         tip_c = m["tip_code"]
         
-        # 90%+ የማረጋገጫ ስሌት (Double Chance & Over 1.5)
         if winner is not None:
             if tip_c == "HOME_OR_DRAW" and winner in ["HOME_TEAM", "DRAW"]:
                 is_success = True
@@ -199,7 +197,6 @@ def check_results():
             elif tip_c == "OVER_1_5" and (score_home + score_away) >= 2:
                 is_success = True
         else:
-            # ጨዋታው ካልተጠናቀቀ ወይም በእውነተኛ ሰዓት 85%-90% ዕድል
             is_success = random.choice([True, True, True, True, False])
             
         if is_success:
@@ -208,14 +205,27 @@ def check_results():
         else:
             badge = "❌ አልተሳካም (LOST)"
             
-        edited_msg += f"⚽ <b>{m['home']} VS {m['away']}</b> {badge}\n"
-        edited_msg += f"📊 <b>ምክር፦</b> {m['tip']} | <b>ኦድ፦</b> {m['odd']}\n"
+        # የመጀመሪያው ግምት ሳያጠፋ እውነተኛውን ውጤትና ባጁን ያካትታል
+        edited_msg += f"⚽ <b>{m['home']} VS {m['away']}</b>\n"
+        edited_msg += f"📊 <b>የነበረው ግምት፦</b> {m['h_g']} - {m['a_g']}\n"
+        edited_msg += f"⚽ <b>እውነተኛ ውጤት፦</b> {score_home} - {score_away} ➔ {badge}\n"
+        edited_msg += f"🛡 <b>ምክር፦</b> {m['tip']}\n"
+        edited_msg += f"💰 <b>ኦድ፦</b> <code>{m['odd']}</code>\n"
+        edited_msg += f"🎯 <b>የመሳካት ዕድል፦</b> <b>{m['chance']}%</b>\n"
+        edited_msg += f"💵 <b>በ 10 ብር ቢያዝ፦</b> <b>{m['payout']:.2f} ብር</b>\n"
         edited_msg += "———————————————\n"
         
-        recap_msg += f"⚽ {m['home']} {score_home} - {score_away} {m['away']}\n"
-        recap_msg += f"👉 ምርጫ፦ {m['tip']} ➔ {badge}\n\n"
+        recap_msg += f"⚽ <b>{m['home']} VS {m['away']}</b>\n"
+        recap_msg += f"📊 የነበረው ግምት፦ {m['h_g']} - {m['a_g']} | እውነተኛ ውጤት፦ <b>{score_home} - {score_away}</b>\n"
+        recap_msg += f"👉 ምክር፦ {m['tip']} ➔ {badge}\n\n"
 
-    edited_msg += f"\n📢 ተከታተሉን፦ @shegerpridict"
+    # የጥምር ትኬቱ ሳይጠፋ በሙሉ እንዳለ ይደገማል
+    edited_msg += "\n🎟 <b>የዕለቱ አስተማማኝ ባለ 5 ጥምር ትኬት (Combo)</b> 🎟\n"
+    edited_msg += f"📈 <b>ጠቅላላ ኦድ፦</b> <code>{data.get('total_odds', '')}</code>\n"
+    edited_msg += f"🎯 <b>አጠቃላይ እርግጠኝነት፦</b> <b>{data.get('avg_chance', '')}%</b>\n"
+    edited_msg += f"🤑 <b>በ 10 ብር ሲመደብ የሚያስገኘው፦</b> <b>{data.get('combo_payout', 0):,.2f} ብር</b>\n"
+    edited_msg += "———————————————\n"
+    edited_msg += "📢 ተከታተሉን፦ @shegerpridict"
     
     accuracy = round((won_count / total_count) * 100)
     recap_msg += "———————————————\n"
