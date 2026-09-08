@@ -11,7 +11,6 @@ FOOTBALL_API_KEY = os.environ.get("FOOTBALL_API_KEY", "").strip()
 
 DATA_FILE = "predictions_data.json"
 
-# የታላላቅ የአውሮፓ ክለቦች ጥንካሬ ደረጃ (Power Rankings)
 TIER_1_TEAMS = [
     "Real Madrid", "Barcelona", "Manchester City", "Arsenal", "Liverpool", 
     "Bayern", "Paris Saint-Germain", "Inter", "Bayer Leverkusen"
@@ -30,6 +29,29 @@ def get_team_rank(team_name):
         if t.lower() in team_name.lower():
             return 2
     return 3
+
+def format_ethiopian_time(utc_str):
+    try:
+        dt = datetime.strptime(utc_str.replace("Z", ""), "%Y-%m-%dT%H:%M:%S")
+        eat_dt = dt + timedelta(hours=3) # UTC ወደ ኢትዮጵያ ሰዓት (+3 ሰዓት)
+        date_display = eat_dt.strftime("%d/%m/%Y")
+        hour = eat_dt.hour
+        minute = eat_dt.strftime("%M")
+        
+        if hour >= 18:
+            eth_desc = f"ማታ {hour-12}:{minute}"
+        elif hour >= 12:
+            eth_desc = f"ከሰዓት {hour if hour==12 else hour-12}:{minute}"
+        elif hour >= 6:
+            eth_desc = f"ረፋድ {hour}:{minute}"
+        else:
+            eth_desc = f"ጠዋት {hour}:{minute}"
+            
+        time_display = f"{eat_dt.strftime('%I:%M %p')} ({eth_desc})"
+        return date_display, time_display
+    except:
+        now_eat = datetime.utcnow() + timedelta(hours=3)
+        return now_eat.strftime("%d/%m/%Y"), "ምሽት (በኢትዮጵያ ሰዓት)"
 
 def send_telegram_message(message):
     url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
@@ -88,10 +110,13 @@ def generate_smart_prediction(home, away):
         odd = round(random.uniform(1.35, 1.60), 2)
         chance = random.randint(85, 91)
         
-    return h_g, a_g, tip, tip_code, odd, chance
+    corner_tip = random.choice(["ከ 8.5 በላይ ኮርነር (Over 8.5)", "ከ 7.5 በላይ ኮርነር (Over 7.5)", "ከ 9.5 በላይ ኮርነር (Over 9.5)"])
+    card_tip = random.choice(["ከ 3.5 በላይ ካርዶች (Over 3.5 Cards)", "ከ 4.5 በታች ካርዶች (Under 4.5 Cards)", "ከ 2.5 በላይ ቢጫ ካርዶች (Over 2.5)"])
+    
+    return h_g, a_g, tip, tip_code, odd, chance, corner_tip, card_tip
 
 def run_predictions():
-    print("Posting predictions...")
+    print("Posting predictions with match time, corners & cards...")
     matches = get_today_matches()
     
     if not matches:
@@ -105,7 +130,7 @@ def run_predictions():
         return
 
     saved_data = {"date": datetime.utcnow().strftime("%Y-%m-%d"), "matches": []}
-    message = "🔥 <b>ሸገር የኳስ ግምት | የዕለቱ አስተማማኝ ትንበያዎች</b> 🔥\n\n"
+    message = "🔥 <b>ሸገር የኳስ ግምት | የዕለቱ ሙሉ ትንበያዎች & ሰዓት</b> 🔥\n\n"
     
     total_odds = 1.0
     total_chance = 0
@@ -115,7 +140,10 @@ def run_predictions():
         m_id = m["id"]
         h_name = m["homeTeam"]["name"]
         a_name = m["awayTeam"]["name"]
-        h_g, a_g, tip, tip_code, odd, chance = generate_smart_prediction(h_name, a_name)
+        utc_date = m.get("utcDate", "")
+        match_date, match_time = format_ethiopian_time(utc_date)
+        
+        h_g, a_g, tip, tip_code, odd, chance, corner_tip, card_tip = generate_smart_prediction(h_name, a_name)
         
         single_payout = round(10 * odd, 2)
         total_odds *= odd
@@ -123,15 +151,19 @@ def run_predictions():
         
         saved_data["matches"].append({
             "id": m_id, "home": h_name, "away": a_name,
+            "date": match_date, "time": match_time,
             "tip": tip, "tip_code": tip_code, "odd": odd,
-            "h_g": h_g, "a_g": a_g, "chance": chance, "payout": single_payout
+            "h_g": h_g, "a_g": a_g, "chance": chance, "payout": single_payout,
+            "corner": corner_tip, "card": card_tip
         })
         
         message += f"⚽ <b>{h_name} VS {a_name}</b>\n"
+        message += f"📅 <b>ቀን፦</b> {match_date} | ⏰ <b>ሰዓት፦</b> {match_time}\n"
         message += f"📊 <b>የግብ ግምት፦</b> {h_g} - {a_g}\n"
         message += f"🛡 <b>ምክር፦</b> {tip}\n"
-        message += f"💰 <b>ኦድ፦</b> <code>{odd}</code>\n"
-        message += f"🎯 <b>የመሳካት ዕድል፦</b> <b>{chance}%</b> 🔥\n"
+        message += f"💰 <b>ኦድ፦</b> <code>{odd}</code> | 🎯 <b>ዕድል፦</b> <b>{chance}%</b>\n"
+        message += f"🚩 <b>ኮርነር፦</b> {corner_tip}\n"
+        message += f"🟨🟥 <b>ካርዶች፦</b> {card_tip}\n"
         message += f"💵 <b>በ 10 ብር ቢያዝ፦</b> <b>{single_payout:.2f} ብር</b>\n"
         message += "———————————————\n"
         
@@ -139,7 +171,7 @@ def run_predictions():
     combo_payout = round(10 * total_odds, 2)
     avg_chance = round(total_chance / len(selected))
     
-    message += "\n🎟 <b>የዕለቱ አስተማማኝ ባለ 5 ጥምር ትኬት (Combo)</b> 🎟\n"
+    message += "\n🎟 <b>የዕለቱ ባለ 5 ጥምር ትኬት (Combo)</b> 🎟\n"
     message += f"📈 <b>ጠቅላላ ኦድ፦</b> <code>{total_odds}</code>\n"
     message += f"🎯 <b>አጠቃላይ እርግጠኝነት፦</b> <b>{avg_chance}%</b>\n"
     message += f"🤑 <b>በ 10 ብር ሲመደብ የሚያስገኘው፦</b> <b>{combo_payout:,.2f} ብር</b>\n"
@@ -156,7 +188,7 @@ def run_predictions():
             json.dump(saved_data, f)
 
 def check_results():
-    print("Checking match results without erasing original prediction...")
+    print("Checking match results preserving all info...")
     if not os.path.exists(DATA_FILE):
         print("No predictions data found.")
         return
@@ -176,8 +208,7 @@ def check_results():
     won_count = 0
     total_count = len(data["matches"])
     
-    # የጠዋቱን ፖስት ሙሉ መረጃ ሳያጠፋ የሚያስተካክልበት
-    edited_msg = "🔥 <b>ሸገር የኳስ ግምት | የዕለቱ ትንበያዎች & ውጤቶች</b> 🔥\n\n"
+    edited_msg = "🔥 <b>ሸገር የኳስ ግምት | የተረጋገጠ ውጤት & ሙሉ መረጃ</b> 🔥\n\n"
     recap_msg = "🏁 <b>ሸገር የኳስ ግምት | የዕለቱ ውጤት ማጠቃለያ</b> 🏁\n\n"
     
     for m in data["matches"]:
@@ -205,22 +236,23 @@ def check_results():
         else:
             badge = "❌ አልተሳካም (LOST)"
             
-        # የመጀመሪያው ግምት ሳያጠፋ እውነተኛውን ውጤትና ባጁን ያካትታል
+        # መጀመሪያ የተገመተው ሁሉ ሳይጠፋ ውጤቱ አብሮ ይጨመራል
         edited_msg += f"⚽ <b>{m['home']} VS {m['away']}</b>\n"
+        edited_msg += f"⏰ <b>ሰዓት፦</b> {m.get('time', '')}\n"
         edited_msg += f"📊 <b>የነበረው ግምት፦</b> {m['h_g']} - {m['a_g']}\n"
         edited_msg += f"⚽ <b>እውነተኛ ውጤት፦</b> {score_home} - {score_away} ➔ {badge}\n"
         edited_msg += f"🛡 <b>ምክር፦</b> {m['tip']}\n"
-        edited_msg += f"💰 <b>ኦድ፦</b> <code>{m['odd']}</code>\n"
-        edited_msg += f"🎯 <b>የመሳካት ዕድል፦</b> <b>{m['chance']}%</b>\n"
+        edited_msg += f"💰 <b>ኦድ፦</b> <code>{m['odd']}</code> | 🎯 <b>ዕድል፦</b> <b>{m['chance']}%</b>\n"
+        edited_msg += f"🚩 <b>ኮርነር፦</b> {m.get('corner', '')}\n"
+        edited_msg += f"🟨🟥 <b>ካርዶች፦</b> {m.get('card', '')}\n"
         edited_msg += f"💵 <b>በ 10 ብር ቢያዝ፦</b> <b>{m['payout']:.2f} ብር</b>\n"
         edited_msg += "———————————————\n"
         
         recap_msg += f"⚽ <b>{m['home']} VS {m['away']}</b>\n"
-        recap_msg += f"📊 የነበረው ግምት፦ {m['h_g']} - {m['a_g']} | እውነተኛ ውጤት፦ <b>{score_home} - {score_away}</b>\n"
+        recap_msg += f"📊 ግምት፦ {m['h_g']} - {m['a_g']} | እውነተኛ ውጤት፦ <b>{score_home} - {score_away}</b>\n"
         recap_msg += f"👉 ምክር፦ {m['tip']} ➔ {badge}\n\n"
 
-    # የጥምር ትኬቱ ሳይጠፋ በሙሉ እንዳለ ይደገማል
-    edited_msg += "\n🎟 <b>የዕለቱ አስተማማኝ ባለ 5 ጥምር ትኬት (Combo)</b> 🎟\n"
+    edited_msg += "\n🎟 <b>የዕለቱ ባለ 5 ጥምር ትኬት (Combo)</b> 🎟\n"
     edited_msg += f"📈 <b>ጠቅላላ ኦድ፦</b> <code>{data.get('total_odds', '')}</code>\n"
     edited_msg += f"🎯 <b>አጠቃላይ እርግጠኝነት፦</b> <b>{data.get('avg_chance', '')}%</b>\n"
     edited_msg += f"🤑 <b>በ 10 ብር ሲመደብ የሚያስገኘው፦</b> <b>{data.get('combo_payout', 0):,.2f} ብር</b>\n"
